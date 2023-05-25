@@ -48,12 +48,28 @@ impl Instruction {
 
 struct VM {
     memory: [u8; 0x1000], // 4096 memory
+    h: u8,
+    w: u8,
+    pc: u16,
+    i: u16,
+    stack: Vec<u8>,
+    delay_timer: u8,
+    sound_timer: u8,
+    registers: [u8; 16],
 }
 
 impl VM {
     pub fn new() -> Self {
         VM {
             memory: [0; 0x1000],
+            h: 64,
+            w: 32,
+            pc: 0x200,
+            i: 0,
+            stack: vec![],
+            delay_timer: 0,
+            sound_timer: 0,
+            registers: [0; 16],
         }
     }
 
