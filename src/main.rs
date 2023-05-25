@@ -67,7 +67,7 @@ impl VM {
             pc: 0x200,
             i: 0,
             stack: vec![],
-            delay_timer: 0,
+            delay_timer: 60,
             sound_timer: 0,
             registers: [0; 16],
         }
