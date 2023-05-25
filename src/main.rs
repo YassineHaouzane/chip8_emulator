@@ -1,27 +1,87 @@
 use std::env;
+use std::fmt::Display;
 use std::fs;
+#[derive(Debug)]
+enum Instruction {
+    ClearScreen,                       // 00E0 (clear screen)
+    Jump { adress: u16 },              // 1NNN (jump)
+    SetRegister { x: u8, value: u8 },  // 6XNN (set register VX)
+    AddRegister { x: u8, value: u8 },  // 7XNN (add value to register VX)
+    SetIRegister { adress: u16 },      // ANNN (set index register I)
+    Draw { x: u8, y: u8, nibble: u8 }, // DXYN (display/draw)
+}
+impl Instruction {
+    pub fn from_u16(value: u16) -> Option<Self> {
+        let [first_chunk, second_chunk] = value.to_be_bytes();
+        match value {
+            0x00E0 => Some(Instruction::ClearScreen),
+            _ => match first_chunk >> 4 {
+                0x01 => {
+                    let adress = u16::from_ne_bytes([second_chunk, (first_chunk & 0x0F)]);
+                    Some(Instruction::Jump { adress })
+                }
+                0x06 => {
+                    let register = first_chunk & 0x0F;
+                    let value = second_chunk;
+                    Some(Instruction::SetRegister { x: register, value })
+                }
+                0x07 => {
+                    let register = first_chunk & 0x0F;
+                    let value = second_chunk;
+                    Some(Instruction::AddRegister { x: register, value })
+                }
+                0x0A => {
+                    let adress = u16::from_ne_bytes([second_chunk, (first_chunk & 0x0F)]);
+                    Some(Instruction::SetIRegister { adress })
+                }
+                0x0D => {
+                    let x = first_chunk & 0x0F;
+                    let y = second_chunk >> 4;
+                    let nibble = second_chunk & 0x0F;
+                    Some(Instruction::Draw { x, y, nibble })
+                }
+                _ => None,
+            },
+        }
+    }
+}
 
-fn read_file(rom_path: &String) -> Vec<u16> {
+struct VM {
+    memory: [u8; 0x1000], // 4096 memory
+}
+
+impl VM {
+    pub fn new() -> Self {
+        VM {
+            memory: [0; 0x1000],
+        }
+    }
+
+    pub fn set_byte(&mut self, index: usize, value: u8) {
+        self.memory[index] = value;
+    }
+}
+
+impl Display for VM {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:x?}", self.memory[0x200])
+    }
+}
+
+fn read_rom(rom_path: &String) -> VM {
+    let mut result = VM::new();
     println!("Trying to load rom: {}", rom_path);
-    let bytes_rom = fs::read(rom_path).expect("Cannot get bytes");
-    let little_endian_chip_rom: Vec<u16> = bytes_rom
-        .chunks_exact(2)
+    let bytes_rom: Vec<u8> = fs::read(rom_path).expect("Cannot get bytes");
+    let start_program_adress = 0x200;
+    bytes_rom
         .into_iter()
-        .map(|a| {
-            let first_chunk = u8::from_ne_bytes([a[0]]);
-            let second_chunk = u8::from_ne_bytes([a[1]]);
-            // Big endian to little endian
-            u16::from_ne_bytes([second_chunk, first_chunk])
-        })
-        .collect();
-    little_endian_chip_rom
+        .enumerate()
+        .for_each(|(index, value)| result.set_byte(index + start_program_adress, value));
+    result
 }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let little_endian_chip_rom = read_file(&args[1]);
-    println!("{}", little_endian_chip_rom.len());
-    for i in little_endian_chip_rom.iter().take(10) {
-        println!("{:#06X?}", i);
-    }
+    let virtual_machine = read_rom(&args[1]);
+    println!("{}", virtual_machine);
 }
