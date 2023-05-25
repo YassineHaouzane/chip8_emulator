@@ -52,7 +52,7 @@ struct VM {
     w: u8,
     pc: u16,
     i: u16,
-    stack: Vec<u8>,
+    stack: Vec<u16>,
     delay_timer: u8,
     sound_timer: u8,
     registers: [u8; 16],
