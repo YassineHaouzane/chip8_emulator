@@ -1,5 +1,6 @@
 mod renderer;
 mod vm;
+use renderer::draw;
 use renderer::handle_event;
 use renderer::initialize_sdl_renderer;
 use sdl2::rect::Point;
@@ -8,6 +9,9 @@ use std::fs;
 use std::thread;
 use std::time::Duration;
 use vm::*;
+
+const CHIP8_HEIGHT: usize = 32;
+const CHIP8_WIDTH: usize = 64;
 
 fn read_rom(rom_path: &String) -> VM {
     let mut result = VM::new();
@@ -31,10 +35,7 @@ fn main() -> Result<(), String> {
             break 'running;
         }
         virtual_machine.decode_instruction(&mut canvas);
-        let () = canvas
-            .draw_line(Point::new(0, 200), Point::new(200, 200))
-            .unwrap();
-        canvas.present();
+        draw(&mut canvas, &virtual_machine.display_bits);
 
         thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }

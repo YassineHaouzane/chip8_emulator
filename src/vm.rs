@@ -2,12 +2,13 @@ use std::fmt::Display;
 
 use sdl2::{render::Canvas, video::Window};
 
-use crate::renderer;
+use crate::{renderer, CHIP8_HEIGHT, CHIP8_WIDTH};
 
 pub struct VM {
     memory: [u8; 0x1000], // 4096 memory
-    h: u8,
-    w: u8,
+    pub display_bits: [[u8; CHIP8_WIDTH]; CHIP8_HEIGHT],
+    h: usize,
+    w: usize,
     pc: u16,
     i: u16,
     stack: Vec<u16>,
@@ -20,6 +21,7 @@ impl VM {
     pub fn new() -> Self {
         VM {
             memory: [0; 0x1000],
+            display_bits: [[0; CHIP8_WIDTH]; CHIP8_HEIGHT],
             h: 32,
             w: 64,
             pc: 0x200,
@@ -128,10 +130,24 @@ impl VM {
                         self.set_i_register(value)
                     }
                     0x0D => {
-                        let x = x;
-                        let y = y;
-                        let nibble = n;
-                        println!("Draw {} {} {}", x, y, nibble)
+                        let x_coordinate = (self.registers[x as usize] as usize) % self.w;
+                        let y_coordinate = (self.registers[y as usize] as usize) % self.h;
+                        self.set_register(0xF, 0);
+                        let nibble = n as u16;
+                        for i in 0..nibble {
+                            let new_y_coords = y_coordinate + (i as usize);
+                            if new_y_coords >= self.w || (x as usize) >= self.h {
+                                break;
+                            }
+                            for bit in 0..8 {
+                                let x = (self.registers[x as usize] + bit) as usize % self.w;
+                                let color = (self.memory[(self.i + i) as usize] >> (7 - bit)) & 1;
+                                self.registers[0x0f] |= color & self.display_bits[new_y_coords][x];
+                                self.display_bits[new_y_coords][x] ^= color;
+                            }
+                        }
+
+                        println!("Draw {} {} {}", x_coordinate, y_coordinate, nibble)
                     }
                     _ => println!("Uninplemented instruction {:#06X?}", instruction),
                 }
