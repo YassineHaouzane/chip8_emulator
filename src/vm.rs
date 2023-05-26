@@ -28,18 +28,28 @@ impl VM {
     }
 
     pub fn set_byte(&mut self, index: usize, value: u8) {
+        println!(
+            "Setting byte at index {:#06X?}, with value {:#04X?}",
+            index, value
+        );
         self.memory[index] = value;
     }
 
     fn set_i_register(&mut self, value: u16) {
+        println!("Setting byte in i register, with value {:#06X?}", value);
         self.i = value;
     }
 
     fn set_register(&mut self, index: usize, value: u8) {
+        println!(
+            "Setting byte in register {:#06X?}, with value {:#04X?}",
+            index, value
+        );
         self.registers[index] = value;
     }
 
     fn add_register(&mut self, index: usize, value: u8) {
+        println!("Adding value {:#06X?} to register, {:#04X?}", value, index);
         self.registers[index] += value;
     }
 
@@ -67,6 +77,7 @@ impl VM {
     pub fn decode_instruction(&mut self) {
         let instruction = self.get_current_instruction();
         let [first_chunk, second_chunk] = instruction.to_be_bytes();
+        // Bug with jump_pc shouldn't increment
         self.increment_pc();
         match instruction {
             0x00E0 => println!("Clear screen"),
@@ -88,7 +99,6 @@ impl VM {
                 }
                 0x0A => {
                     let value = u16::from_ne_bytes([second_chunk, (first_chunk & 0x0F)]);
-
                     self.set_i_register(value)
                 }
                 0x0D => {
