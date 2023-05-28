@@ -1,8 +1,9 @@
 use std::fmt::Display;
 
-use sdl2::{render::Canvas, video::Window};
-
-use crate::{renderer, CHIP8_HEIGHT, CHIP8_WIDTH};
+use crate::{
+    renderer::{Renderer, SDLWrapper},
+    CHIP8_HEIGHT, CHIP8_WIDTH,
+};
 
 pub struct VM {
     memory: [u8; 0x1000], // 4096 memory
@@ -11,9 +12,9 @@ pub struct VM {
     w: usize,
     pc: u16,
     i: u16,
-    stack: Vec<u16>,
-    delay_timer: u8,
-    sound_timer: u8,
+    _stack: Vec<u16>,
+    _delay_timer: u8,
+    _sound_timer: u8,
     registers: [u8; 16],
 }
 
@@ -26,9 +27,9 @@ impl VM {
             w: 64,
             pc: 0x200,
             i: 0,
-            stack: vec![],
-            delay_timer: 60,
-            sound_timer: 0,
+            _stack: vec![],
+            _delay_timer: 60,
+            _sound_timer: 0,
             registers: [0; 16],
         }
     }
@@ -60,12 +61,12 @@ impl VM {
     }
 
     fn push_stack(&mut self, value: u16) {
-        self.stack.push(value);
+        self._stack.push(value);
     }
 
     fn pop_stack(&mut self) {
         // Might want to check if the pop fails for debugging purposes
-        self.stack.pop();
+        self._stack.pop();
     }
 
     fn increment_pc(&mut self) {
@@ -81,7 +82,7 @@ impl VM {
         ((self.memory[(self.pc) as usize] as u16) << 8) | self.memory[(self.pc + 1) as usize] as u16
     }
 
-    pub fn decode_instruction(&mut self, canvas: &mut Canvas<Window>) {
+    pub fn decode_instruction(&mut self, context: &mut SDLWrapper) {
         let instruction = self.get_current_instruction();
         let [first_chunk, second_chunk] = instruction.to_be_bytes();
         // Bug with jump_pc shouldn't increment
@@ -93,7 +94,7 @@ impl VM {
         match instruction {
             0x00E0 => {
                 println!("Clear screen");
-                renderer::clear_screen(canvas)
+                context.clear_screen()
             }
             _ => {
                 let first_digit = first_chunk >> 4;

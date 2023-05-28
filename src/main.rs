@@ -1,9 +1,7 @@
 mod renderer;
 mod vm;
-use renderer::draw;
-use renderer::handle_event;
-use renderer::initialize_sdl_renderer;
-use sdl2::rect::Point;
+use renderer::Renderer;
+use renderer::SDLWrapper;
 use std::env;
 use std::fs;
 use std::thread;
@@ -28,15 +26,14 @@ fn read_rom(rom_path: &String) -> VM {
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     let mut virtual_machine = read_rom(&args[1]);
-    let (mut event_pump, mut canvas) = initialize_sdl_renderer().unwrap();
+    let mut renderer_context = SDLWrapper::initialize_sdl_renderer().unwrap();
     'running: loop {
-        let event = handle_event(&mut event_pump);
+        let event = renderer_context.handle_event();
         if event.is_some() {
             break 'running;
         }
-        virtual_machine.decode_instruction(&mut canvas);
-        draw(&mut canvas, &virtual_machine.display_bits);
-
+        virtual_machine.decode_instruction(&mut renderer_context);
+        renderer_context.draw(&virtual_machine.display_bits);
         thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
     Ok(())
