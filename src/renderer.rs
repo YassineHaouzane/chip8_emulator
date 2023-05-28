@@ -8,7 +8,7 @@ use sdl2::{
     EventPump,
 };
 
-use crate::{CHIP8_HEIGHT, CHIP8_WIDTH};
+use crate::constants::{CHIP8_HEIGHT, CHIP8_WIDTH};
 
 const SCALE_FACTOR: u32 = 20;
 

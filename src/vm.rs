@@ -1,13 +1,11 @@
-use std::fmt::Display;
+use std::{fmt::Display, fs, thread, time::Duration};
 
-use crate::{
-    renderer::{Renderer, SDLWrapper},
-    CHIP8_HEIGHT, CHIP8_WIDTH,
-};
+use crate::constants::{CHIP8_HEIGHT, CHIP8_WIDTH};
+use crate::renderer::{Renderer, SDLWrapper};
 
 pub struct VM {
     memory: [u8; 0x1000], // 4096 memory
-    pub display_bits: [[u8; CHIP8_WIDTH]; CHIP8_HEIGHT],
+    display_bits: [[u8; CHIP8_WIDTH]; CHIP8_HEIGHT],
     h: usize,
     w: usize,
     pc: u16,
@@ -82,7 +80,7 @@ impl VM {
         ((self.memory[(self.pc) as usize] as u16) << 8) | self.memory[(self.pc + 1) as usize] as u16
     }
 
-    pub fn decode_instruction(&mut self, context: &mut SDLWrapper) {
+    fn decode_instruction(&mut self, context: &mut SDLWrapper) {
         let instruction = self.get_current_instruction();
         let [first_chunk, second_chunk] = instruction.to_be_bytes();
         // Bug with jump_pc shouldn't increment
@@ -154,6 +152,33 @@ impl VM {
                 }
             }
         }
+    }
+
+    fn read_rom(rom_path: &String) -> Self {
+        let mut result = Self::new();
+        println!("Trying to load rom: {}", rom_path);
+        let bytes_rom: Vec<u8> = fs::read(rom_path).expect("Cannot get bytes");
+        let start_program_adress = 0x200;
+        bytes_rom
+            .into_iter()
+            .enumerate()
+            .for_each(|(index, value)| result.set_byte(index + start_program_adress, value));
+        result
+    }
+
+    pub fn run_rom(rom_path: &String) -> Result<(), String> {
+        let mut virtual_machine = Self::read_rom(rom_path);
+        let mut renderer_context = SDLWrapper::initialize_sdl_renderer().unwrap();
+        'running: loop {
+            let event = renderer_context.handle_event();
+            if event.is_some() {
+                break 'running;
+            }
+            virtual_machine.decode_instruction(&mut renderer_context);
+            renderer_context.draw(&virtual_machine.display_bits);
+            thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+        }
+        Ok(())
     }
 }
 
