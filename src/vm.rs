@@ -1,6 +1,6 @@
 use std::{fmt::Display, fs, thread, time::Duration};
 
-use crate::constants::{CHIP8_HEIGHT, CHIP8_WIDTH};
+use crate::constants::{CHIP8_HEIGHT, CHIP8_WIDTH, FONTS};
 use crate::renderer::{Renderer, SDLWrapper};
 
 pub struct VM {
@@ -18,8 +18,13 @@ pub struct VM {
 
 impl VM {
     pub fn new() -> Self {
+        let mut memory = [0; 0x1000];
+        FONTS
+            .into_iter()
+            .enumerate()
+            .for_each(|(index, value)| memory[index] = value);
         VM {
-            memory: [0; 0x1000],
+            memory,
             display_bits: [[0; CHIP8_WIDTH]; CHIP8_HEIGHT],
             h: 32,
             w: 64,
