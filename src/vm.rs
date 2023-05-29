@@ -97,6 +97,8 @@ impl VM {
         match instruction {
             0x00E0 => {
                 println!("Clear screen");
+                // Probably not the best performance wise
+                self.display_bits = [[0; CHIP8_WIDTH]; CHIP8_HEIGHT];
                 context.clear_screen()
             }
             _ => {
