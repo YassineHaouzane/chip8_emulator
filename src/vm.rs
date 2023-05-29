@@ -134,6 +134,32 @@ impl VM {
                         self.push_stack(self.pc);
                         self.jump_pc(adress)
                     }
+                    0x03 => {
+                        let vx_value = self.registers[x as usize];
+                        if vx_value == nn {
+                            self.increment_pc();
+                        }
+                    }
+                    0x04 => {
+                        let vx_value = self.registers[x as usize];
+                        if vx_value != nn {
+                            self.increment_pc();
+                        }
+                    }
+                    0x05 => {
+                        let vx_value = self.registers[x as usize];
+                        let vy_value = self.registers[y as usize];
+                        if vx_value == vy_value {
+                            self.increment_pc();
+                        }
+                    }
+                    0x09 => {
+                        let vx_value = self.registers[x as usize];
+                        let vy_value = self.registers[y as usize];
+                        if vx_value != vy_value {
+                            self.increment_pc();
+                        }
+                    }
                     0x06 => {
                         let register = x;
                         let value = nn;
