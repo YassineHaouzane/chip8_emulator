@@ -10,7 +10,7 @@ pub struct VM {
     w: usize,
     pc: u16,
     i: u16,
-    _stack: Vec<u16>,
+    stack: Vec<u16>,
     _delay_timer: u8,
     _sound_timer: u8,
     registers: [u8; 16],
@@ -30,7 +30,7 @@ impl VM {
             w: 64,
             pc: 0x200,
             i: 0,
-            _stack: vec![],
+            stack: vec![],
             _delay_timer: 60,
             _sound_timer: 0,
             registers: [0; 16],
@@ -64,12 +64,14 @@ impl VM {
     }
 
     fn push_stack(&mut self, value: u16) {
-        self._stack.push(value);
+        self.stack.push(value);
     }
 
-    fn pop_stack(&mut self) {
+    fn pop_stack(&mut self) -> u16 {
         // Might want to check if the pop fails for debugging purposes
-        self._stack.pop();
+        self.stack
+            .pop()
+            .expect("Can't return from subroutine stack is empty")
     }
 
     fn increment_pc(&mut self) {
@@ -101,6 +103,12 @@ impl VM {
                 self.display_bits = [[0; CHIP8_WIDTH]; CHIP8_HEIGHT];
                 context.clear_screen()
             }
+
+            0x00EE => {
+                let adress = self.pop_stack();
+                self.jump_pc(adress);
+            }
+
             _ => {
                 let first_digit = first_chunk >> 4;
                 let second_digit = first_chunk & 0x0F;
@@ -119,6 +127,11 @@ impl VM {
                 match first_digit {
                     0x01 => {
                         let adress = nnn;
+                        self.jump_pc(adress)
+                    }
+                    0x02 => {
+                        let adress = nnn;
+                        self.push_stack(self.pc);
                         self.jump_pc(adress)
                     }
                     0x06 => {
