@@ -181,11 +181,14 @@ impl VM {
                         let nibble = n as u16;
                         for i in 0..nibble {
                             let new_y_coords = y_coordinate + (i as usize);
-                            if new_y_coords >= self.w || (x as usize) >= self.h {
+                            if new_y_coords >= self.h {
                                 break;
                             }
                             for bit in 0..8 {
                                 let x = (self.registers[x as usize] + bit) as usize % self.w;
+                                if x >= self.w {
+                                    break;
+                                }
                                 let color = (self.memory[(self.i + i) as usize] >> (7 - bit)) & 1;
                                 self.registers[0x0f] |= color & self.display_bits[new_y_coords][x];
                                 self.display_bits[new_y_coords][x] ^= color;
