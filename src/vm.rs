@@ -152,8 +152,11 @@ impl VM {
                                 self.display_bits[new_y_coords][x] ^= color;
                             }
                         }
-
                         println!("Draw {} {} {}", x_coordinate, y_coordinate, nibble)
+                    }
+                    0x0C => {
+                        let random_number = rand::random::<u8>() & nn;
+                        self.set_register(x as usize, random_number);
                     }
                     _ => println!("Uninplemented instruction {:#06X?}", instruction),
                 }
