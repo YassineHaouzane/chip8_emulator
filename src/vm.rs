@@ -1,3 +1,4 @@
+use std::panic;
 use std::{fmt::Display, fs, thread, time::Duration};
 
 use crate::constants::{CHIP8_HEIGHT, CHIP8_WIDTH, FONTS};
@@ -65,8 +66,9 @@ impl VM {
             "Adding value {:#06X?} to register, {:#04X?} which contains {:#06X?}",
             value, index, self.registers[index]
         );
+        self.print_registers();
         // Allow overflow some chip8 programs seems to use willingly overflow on u8 registers
-        self.registers[index] += u8::wrapping_add(self.registers[index], value);
+        self.registers[index] = u8::wrapping_add(self.registers[index], value);
     }
 
     fn push_stack(&mut self, value: u16) {
@@ -86,6 +88,7 @@ impl VM {
 
     fn skip_instruction_if(&mut self, predicate: bool) {
         if predicate {
+            println!("Skipping instruction");
             self.increment_pc()
         }
     }
@@ -130,7 +133,7 @@ impl VM {
             0x00EE => {
                 let adress = self.pop_stack();
                 println!("Jumping from stack");
-                self.jump_pc(adress)
+                self.jump_pc(adress);
             }
 
             _ => match hex_digits.0 {
@@ -145,10 +148,12 @@ impl VM {
                 }
                 0x03 => {
                     let vx_value = self.registers[x as usize];
-                    self.skip_instruction_if(vx_value == n)
+                    println!("vx value : {:#06X?}", vx_value);
+                    self.skip_instruction_if(vx_value == nn)
                 }
                 0x04 => {
                     let vx_value = self.registers[x as usize];
+                    self.print_registers();
                     self.skip_instruction_if(vx_value != nn)
                 }
                 0x05 => {
@@ -169,7 +174,8 @@ impl VM {
                 0x07 => {
                     let register = x;
                     let value = nn;
-                    self.add_register(register as usize, value)
+                    self.add_register(register as usize, value);
+                    println!("result: {:#06X?}", self.registers[register as usize])
                 }
                 0x0A => {
                     let value = nnn;
@@ -178,6 +184,7 @@ impl VM {
                 0x0D => {
                     let x_coordinate = (self.registers[x as usize] as usize) % self.w;
                     let y_coordinate = (self.registers[y as usize] as usize) % self.h;
+                    self.print_registers();
                     self.set_register(0xF, 0);
                     let nibble = n as u16;
                     for i in 0..nibble {
@@ -209,12 +216,19 @@ impl VM {
                         self.skip_instruction_if(!self.keys[self.registers[x as usize] as usize])
                     }
                     (0x0F, _, 0x0, 0x07) => self.registers[x as usize] = self.delay_timer,
-                    _ => println!("Uninplemented instruction {:#06X?}", instruction),
+                    _ => {
+                        panic!("Uninplemented instruction {:#06X?}", instruction);
+                    }
                 },
             },
         }
     }
 
+    fn print_registers(&self) {
+        for ele in self.registers.iter() {
+            println!("{:#04X?}", ele);
+        }
+    }
     fn read_rom(rom_path: &String) -> Self {
         let mut result = Self::new();
         println!("Trying to load rom: {}", rom_path);
@@ -255,7 +269,9 @@ impl VM {
 
             virtual_machine.decode_instruction(&mut renderer_context);
             renderer_context.draw(&virtual_machine.display_bits);
-            thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+
+            thread::sleep(Duration::from_millis(100));
+            //thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
         }
         Ok(())
     }
