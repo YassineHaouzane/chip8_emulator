@@ -60,7 +60,7 @@ impl SDLWrapper {
 
 pub trait Renderer {
     fn clear_screen(&mut self);
-    fn handle_event(&mut self) -> Option<Event>;
+    fn handle_event(&mut self) -> Result<[bool; 16], ()>;
     fn draw(&mut self, pixels: &[[u8; CHIP8_WIDTH]; CHIP8_HEIGHT]);
 }
 
@@ -70,18 +70,48 @@ impl Renderer for SDLWrapper {
         self.canvas.clear()
     }
 
-    fn handle_event(&mut self) -> Option<Event> {
+    fn handle_event(&mut self) -> Result<[bool; 16], ()> {
         for event in self.event_handler.poll_iter() {
             match event {
                 Event::Quit { .. }
                 | Event::KeyDown {
                     keycode: Some(Keycode::Escape),
                     ..
-                } => return Some(event),
+                } => return Err(()),
                 _ => {}
             }
         }
-        None
+        let mut keys = [false; 16];
+
+        self.event_handler
+            .keyboard_state()
+            .pressed_scancodes()
+            .filter_map(Keycode::from_scancode)
+            .for_each(|key| {
+                let key_index_o = match key {
+                    Keycode::Num1 => Some(0),
+                    Keycode::Num2 => Some(1),
+                    Keycode::Num3 => Some(2),
+                    Keycode::Num4 => Some(3),
+                    Keycode::Q => Some(4),
+                    Keycode::W => Some(5),
+                    Keycode::E => Some(6),
+                    Keycode::R => Some(7),
+                    Keycode::A => Some(8),
+                    Keycode::S => Some(9),
+                    Keycode::D => Some(10),
+                    Keycode::F => Some(11),
+                    Keycode::Z => Some(12),
+                    Keycode::X => Some(13),
+                    Keycode::C => Some(14),
+                    Keycode::V => Some(15),
+                    _ => None,
+                };
+                if let Some(key_index) = key_index_o {
+                    keys[key_index] = true;
+                }
+            });
+        Ok(keys)
     }
 
     fn draw(&mut self, pixels: &[[u8; CHIP8_WIDTH]; CHIP8_HEIGHT]) {
