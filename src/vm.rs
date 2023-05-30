@@ -61,8 +61,12 @@ impl VM {
     }
 
     fn add_register(&mut self, index: usize, value: u8) {
-        println!("Adding value {:#06X?} to register, {:#04X?}", value, index);
-        self.registers[index] += value;
+        println!(
+            "Adding value {:#06X?} to register, {:#04X?} which contains {:#06X?}",
+            value, index, self.registers[index]
+        );
+        // Allow overflow some chip8 programs seems to use willingly overflow on u8 registers
+        self.registers[index] += u8::wrapping_add(self.registers[index], value);
     }
 
     fn push_stack(&mut self, value: u16) {
@@ -125,7 +129,8 @@ impl VM {
 
             0x00EE => {
                 let adress = self.pop_stack();
-                self.jump_pc(adress);
+                println!("Jumping from stack");
+                self.jump_pc(adress)
             }
 
             _ => match hex_digits.0 {
