@@ -61,6 +61,15 @@ impl VM {
         self.registers[index] = value;
     }
 
+    fn register_checker(&mut self, predicate: bool) {
+        if predicate {
+            self.registers[0xF] = 1;
+        } else {
+            self.registers[0xF] = 0;
+        }
+    }
+
+    // Returns true if an overflow occured
     fn add_register(&mut self, index: usize, value: u8) {
         println!(
             "Adding value {:#06X?} to register, {:#04X?} which contains {:#06X?}",
@@ -239,39 +248,34 @@ impl VM {
                         x as usize,
                         self.registers[y as usize] ^ self.registers[x as usize],
                     ),
-                    (0x08, _, _, 0x04) => self.add_register(x as usize, self.registers[y as usize]),
+                    (0x08, _, _, 0x04) => {
+                        let x_value = self.registers[x as usize];
+                        let y_value = self.registers[y as usize];
+                        self.add_register(x as usize, self.registers[y as usize]);
+                        self.register_checker(x_value.checked_add(y_value).is_none());
+                    }
                     (0x08, _, _, 0x05) => {
-                        if self.registers[x as usize] > self.registers[y as usize] {
-                            self.registers[0xF] = 1;
-                        }
+                        let x_value = self.registers[x as usize];
+                        let y_value = self.registers[y as usize];
                         self.sub_register(x as usize, self.registers[y as usize]);
+                        self.register_checker(x_value > y_value);
                     }
                     (0x08, _, _, 0x06) => {
                         let shifted_bit = self.registers[x as usize] & 0x01;
-                        if shifted_bit == 1 {
-                            self.registers[0xF] = 1;
-                        }
-                        self.set_register(x as usize, self.registers[x as usize] >> 1)
+                        self.set_register(x as usize, self.registers[x as usize] >> 1);
+                        self.register_checker(shifted_bit == 1);
                     }
                     (0x08, _, _, 0x07) => {
-                        if self.registers[y as usize] > self.registers[x as usize] {
-                            self.registers[0xF] = 1;
-                        }
-                        self.set_register(
-                            x as usize,
-                            u8::wrapping_sub(
-                                self.registers[y as usize],
-                                self.registers[x as usize],
-                            ),
-                        );
+                        let x_value = self.registers[x as usize];
+                        let y_value = self.registers[y as usize];
+                        self.set_register(x as usize, u8::wrapping_sub(y_value, x_value));
+                        self.register_checker(y_value > x_value)
                     }
 
                     (0x08, _, _, 0x0E) => {
                         let last_bit = self.registers[x as usize] & 0b10000000;
-                        if last_bit == 0b10000000 {
-                            self.registers[0xF] = 1;
-                        }
-                        self.set_register(x as usize, self.registers[x as usize] << 1)
+                        self.set_register(x as usize, self.registers[x as usize] << 1);
+                        self.register_checker(last_bit == 0b10000000);
                     }
                     (0x0F, _, 0x05, 0x05) => {
                         let adress = self.i;
@@ -359,8 +363,8 @@ impl VM {
             virtual_machine.decode_instruction(&mut renderer_context);
             renderer_context.draw(&virtual_machine.display_bits);
 
-            thread::sleep(Duration::from_millis(100));
-            //thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+            //thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
         }
         Ok(())
     }
