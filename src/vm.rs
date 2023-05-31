@@ -41,23 +41,23 @@ impl VM {
     }
 
     pub fn set_byte(&mut self, index: usize, value: u8) {
-        println!(
+        /*println!(
             "Setting byte at index {:#06X?}, with value {:#04X?}",
             index, value
-        );
+        );*/
         self.memory[index] = value;
     }
 
     fn set_i_register(&mut self, value: u16) {
-        println!("Setting byte in i register, with value {:#06X?}", value);
+        // println!("Setting byte in i register, with value {:#06X?}", value);
         self.i = value;
     }
 
     fn set_register(&mut self, index: usize, value: u8) {
-        println!(
-            "Setting byte in register {:#06X?}, with value {:#04X?}",
-            index, value
-        );
+        // println!(
+        //     "Setting byte in register {:#06X?}, with value {:#04X?}",
+        //     index, value
+        // );
         self.registers[index] = value;
     }
 
@@ -71,21 +71,21 @@ impl VM {
 
     // Returns true if an overflow occured
     fn add_register(&mut self, index: usize, value: u8) {
-        println!(
-            "Adding value {:#06X?} to register, {:#04X?} which contains {:#06X?}",
-            value, index, self.registers[index]
-        );
-        self.print_registers();
+        // println!(
+        //     "Adding value {:#06X?} to register, {:#04X?} which contains {:#06X?}",
+        //     value, index, self.registers[index]
+        // );
+        // //self.print_registers();
         // Allow overflow some chip8 programs seems to use willingly overflow on u8 registers
         self.registers[index] = u8::wrapping_add(self.registers[index], value);
     }
 
     fn sub_register(&mut self, index: usize, value: u8) {
-        println!(
-            "Subtracting value {:#06X?} to register, {:#04X?} which contains {:#06X?}",
-            value, index, self.registers[index]
-        );
-        self.print_registers();
+        // println!(
+        //     "Subtracting value {:#06X?} to register, {:#04X?} which contains {:#06X?}",
+        //     value, index, self.registers[index]
+        // );
+        // //self.print_registers();
         // Allow overflow some chip8 programs seems to use willingly overflow on u8 registers
         self.registers[index] = u8::wrapping_sub(self.registers[index], value);
     }
@@ -107,13 +107,13 @@ impl VM {
 
     fn skip_instruction_if(&mut self, predicate: bool) {
         if predicate {
-            println!("Skipping instruction");
+            //           println!("Skipping instruction");
             self.increment_pc()
         }
     }
 
     fn jump_pc(&mut self, adress: u16) {
-        println!("Jumping to {:#06X?}", adress);
+        // println!("Jumping to {:#06X?}", adress);
         self.pc = adress
     }
 
@@ -137,13 +137,9 @@ impl VM {
         let nnn = instruction & 0x0FFF;
         // Bug with jump_pc shouldn't increment
         self.increment_pc();
-        println!(
-            "Decoding... adress: {:#06X?} byte: {:#06X?}",
-            self.pc, instruction
-        );
+
         match instruction {
             0x00E0 => {
-                println!("Clear screen");
                 // Probably not the best performance wise
                 self.display_bits = [[0; CHIP8_WIDTH]; CHIP8_HEIGHT];
                 context.clear_screen()
@@ -151,7 +147,6 @@ impl VM {
 
             0x00EE => {
                 let adress = self.pop_stack();
-                println!("Jumping from stack");
                 self.jump_pc(adress);
             }
 
@@ -167,12 +162,10 @@ impl VM {
                 }
                 0x03 => {
                     let vx_value = self.registers[x as usize];
-                    println!("vx value : {:#06X?}", vx_value);
                     self.skip_instruction_if(vx_value == nn)
                 }
                 0x04 => {
                     let vx_value = self.registers[x as usize];
-                    self.print_registers();
                     self.skip_instruction_if(vx_value != nn)
                 }
                 0x05 => {
@@ -194,7 +187,6 @@ impl VM {
                     let register = x;
                     let value = nn;
                     self.add_register(register as usize, value);
-                    println!("result: {:#06X?}", self.registers[register as usize])
                 }
                 0x0A => {
                     let value = nnn;
@@ -203,7 +195,6 @@ impl VM {
                 0x0D => {
                     let x_coordinate = (self.registers[x as usize] as usize) % self.w;
                     let y_coordinate = (self.registers[y as usize] as usize) % self.h;
-                    self.print_registers();
                     self.set_register(0xF, 0);
                     let nibble = n as u16;
                     for i in 0..nibble {
@@ -221,7 +212,7 @@ impl VM {
                             self.display_bits[new_y_coords][x] ^= color;
                         }
                     }
-                    println!("Draw {} {} {}", x_coordinate, y_coordinate, nibble)
+                    //println!("Draw {} {} {}", x_coordinate, y_coordinate, nibble)
                 }
                 0x0C => {
                     let random_number = rand::random::<u8>() & nn;
@@ -229,9 +220,19 @@ impl VM {
                 }
                 _ => match hex_digits {
                     (0x0E, _, 0x09, 0x0E) => {
+                        println!(
+                            "Decoding... adress: {:#06X?} byte: {:#06X?}",
+                            self.pc, instruction
+                        );
+                        //self.keys.iter().for_each(|x| println!("{}", x));
                         self.skip_instruction_if(self.keys[self.registers[x as usize] as usize])
                     }
                     (0x0E, _, 0x0A, 0x01) => {
+                        println!(
+                            "Decoding... adress: {:#06X?} byte: {:#06X?}",
+                            self.pc, instruction
+                        );
+                        //self.keys.iter().for_each(|x| println!("{}", x));
                         self.skip_instruction_if(!self.keys[self.registers[x as usize] as usize])
                     }
                     (0x0F, _, 0x0, 0x07) => self.registers[x as usize] = self.delay_timer,
@@ -309,6 +310,12 @@ impl VM {
                     (0x0F, _, 0x01, 0x0E) => {
                         self.i += (self.registers[x as usize]) as u16;
                     }
+                    (0x0F, _, 0x01, 0x05) => {
+                        self.delay_timer = self.registers[x as usize];
+                    }
+                    (0x0F, _, 0x01, 0x08) => {
+                        self.sound_timer = self.registers[x as usize];
+                    }
                     _ => {
                         panic!("Uninplemented instruction {:#06X?}", instruction);
                     }
@@ -340,9 +347,10 @@ impl VM {
         } else {
             self.delay_timer - 1
         };
-        self.sound_timer = if self.delay_timer == 0 {
+        self.sound_timer = if self.sound_timer == 0 {
             0
         } else {
+            println!("{}", self.sound_timer);
             self.sound_timer - 1
         };
         self.keys = keys;
@@ -363,8 +371,7 @@ impl VM {
             virtual_machine.decode_instruction(&mut renderer_context);
             renderer_context.draw(&virtual_machine.display_bits);
 
-            //thread::sleep(Duration::from_millis(100));
-            thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+            thread::sleep(Duration::new(0, 1_000_000_000u32 / 700));
         }
         Ok(())
     }
