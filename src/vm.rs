@@ -71,6 +71,16 @@ impl VM {
         self.registers[index] = u8::wrapping_add(self.registers[index], value);
     }
 
+    fn sub_register(&mut self, index: usize, value: u8) {
+        println!(
+            "Subtracting value {:#06X?} to register, {:#04X?} which contains {:#06X?}",
+            value, index, self.registers[index]
+        );
+        self.print_registers();
+        // Allow overflow some chip8 programs seems to use willingly overflow on u8 registers
+        self.registers[index] = u8::wrapping_sub(self.registers[index], value);
+    }
+
     fn push_stack(&mut self, value: u16) {
         self.stack.push(value);
     }
@@ -216,6 +226,85 @@ impl VM {
                         self.skip_instruction_if(!self.keys[self.registers[x as usize] as usize])
                     }
                     (0x0F, _, 0x0, 0x07) => self.registers[x as usize] = self.delay_timer,
+                    (0x08, _, _, 0x00) => self.set_register(x as usize, self.registers[y as usize]),
+                    (0x08, _, _, 0x01) => self.set_register(
+                        x as usize,
+                        self.registers[y as usize] | self.registers[x as usize],
+                    ),
+                    (0x08, _, _, 0x02) => self.set_register(
+                        x as usize,
+                        self.registers[y as usize] & self.registers[x as usize],
+                    ),
+                    (0x08, _, _, 0x03) => self.set_register(
+                        x as usize,
+                        self.registers[y as usize] ^ self.registers[x as usize],
+                    ),
+                    (0x08, _, _, 0x04) => self.add_register(x as usize, self.registers[y as usize]),
+                    (0x08, _, _, 0x05) => {
+                        if self.registers[x as usize] > self.registers[y as usize] {
+                            self.registers[0xF] = 1;
+                        }
+                        self.sub_register(x as usize, self.registers[y as usize]);
+                    }
+                    (0x08, _, _, 0x06) => {
+                        let shifted_bit = self.registers[x as usize] & 0x01;
+                        if shifted_bit == 1 {
+                            self.registers[0xF] = 1;
+                        }
+                        self.set_register(x as usize, self.registers[x as usize] >> 1)
+                    }
+                    (0x08, _, _, 0x07) => {
+                        if self.registers[y as usize] > self.registers[x as usize] {
+                            self.registers[0xF] = 1;
+                        }
+                        self.set_register(
+                            x as usize,
+                            u8::wrapping_sub(
+                                self.registers[y as usize],
+                                self.registers[x as usize],
+                            ),
+                        );
+                    }
+
+                    (0x08, _, _, 0x0E) => {
+                        let last_bit = self.registers[x as usize] & 0b10000000;
+                        if last_bit == 0b10000000 {
+                            self.registers[0xF] = 1;
+                        }
+                        self.set_register(x as usize, self.registers[x as usize] << 1)
+                    }
+                    (0x0F, _, 0x05, 0x05) => {
+                        let adress = self.i;
+                        for i in 0..=x {
+                            let register_value = self.registers[i as usize];
+                            self.memory[(adress + (i as u16)) as usize] = register_value;
+                        }
+                    }
+                    (0x0F, _, 0x06, 0x05) => {
+                        // Read memory ?
+                        let adress = self.i;
+                        for i in 0..=x {
+                            self.set_register(
+                                i as usize,
+                                self.memory[(adress + (i as u16)) as usize],
+                            );
+                        }
+                    }
+                    (0x0F, _, 0x03, 0x03) => {
+                        let mut register_value = self.registers[x as usize];
+                        let digit = register_value % 10;
+                        register_value /= 10;
+                        let tenths = register_value % 10;
+                        register_value /= 10;
+                        let hundreds = register_value % 10;
+                        let adress = self.i as usize;
+                        self.memory[adress] = hundreds;
+                        self.memory[adress + 1] = tenths;
+                        self.memory[adress + 2] = digit;
+                    }
+                    (0x0F, _, 0x01, 0x0E) => {
+                        self.i += (self.registers[x as usize]) as u16;
+                    }
                     _ => {
                         panic!("Uninplemented instruction {:#06X?}", instruction);
                     }
