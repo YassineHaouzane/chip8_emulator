@@ -5,7 +5,7 @@ use crate::constants::{CHIP8_HEIGHT, CHIP8_WIDTH, FONTS};
 use crate::renderer::{Renderer, SDLWrapper};
 
 pub struct VM {
-    memory: [u8; 0x1000], // 4096 memory
+    memory: [u8; 0x1000], // 4096 memoruse std::ops::Add;y
     display_bits: [[u8; CHIP8_WIDTH]; CHIP8_HEIGHT],
     h: usize,
     w: usize,
@@ -16,6 +16,8 @@ pub struct VM {
     sound_timer: u8,
     registers: [u8; 16],
     keys: [bool; 16],
+    execution_paused: bool,
+    key_register: usize,
 }
 
 impl VM {
@@ -33,10 +35,12 @@ impl VM {
             pc: 0x200,
             i: 0,
             stack: vec![],
-            delay_timer: 60,
-            sound_timer: 60,
+            delay_timer: 0,
+            sound_timer: 0,
             registers: [0; 16],
             keys: [false; 16],
+            execution_paused: false,
+            key_register: 0,
         }
     }
 
@@ -192,8 +196,11 @@ impl VM {
                     let value = nnn;
                     self.set_i_register(value)
                 }
+                0x0B => {
+                    let new_adress = nnn + (self.registers[0] as u16);
+                    self.pc = new_adress;
+                }
                 0x0D => {
-                    let x_coordinate = (self.registers[x as usize] as usize) % self.w;
                     let y_coordinate = (self.registers[y as usize] as usize) % self.h;
                     self.set_register(0xF, 0);
                     let nibble = n as u16;
@@ -316,6 +323,10 @@ impl VM {
                     (0x0F, _, 0x01, 0x08) => {
                         self.sound_timer = self.registers[x as usize];
                     }
+                    (0x0F, _, 0x00, 0x0A) => {
+                        self.execution_paused = true;
+                        self.key_register = x as usize;
+                    }
                     _ => {
                         panic!("Uninplemented instruction {:#06X?}", instruction);
                     }
@@ -324,11 +335,6 @@ impl VM {
         }
     }
 
-    fn print_registers(&self) {
-        for ele in self.registers.iter() {
-            println!("{:#04X?}", ele);
-        }
-    }
     fn read_rom(rom_path: &String) -> Self {
         let mut result = Self::new();
         println!("Trying to load rom: {}", rom_path);
@@ -341,19 +347,31 @@ impl VM {
         result
     }
 
-    fn cpu_cycle(&mut self, keys: [bool; 16]) {
-        self.delay_timer = if self.delay_timer == 0 {
-            0
-        } else {
-            self.delay_timer - 1
-        };
-        self.sound_timer = if self.sound_timer == 0 {
-            0
-        } else {
-            println!("{}", self.sound_timer);
-            self.sound_timer - 1
-        };
+    fn cpu_cycle(&mut self, keys: [bool; 16], renderer_context: &mut SDLWrapper) {
         self.keys = keys;
+        if self.execution_paused {
+            for i in 0..self.keys.len() {
+                if self.keys[i] {
+                    self.execution_paused = false;
+                    self.registers[self.key_register] = i as u8;
+                    break;
+                }
+            }
+        } else {
+            self.delay_timer = if self.delay_timer == 0 {
+                0
+            } else {
+                self.delay_timer - 1
+            };
+            self.sound_timer = if self.sound_timer == 0 {
+                0
+            } else {
+                println!("{}", self.sound_timer);
+                self.sound_timer - 1
+            };
+            self.decode_instruction(renderer_context);
+            renderer_context.draw(&self.display_bits);
+        }
     }
 
     pub fn run_rom(rom_path: &String) -> Result<(), String> {
@@ -364,14 +382,9 @@ impl VM {
             if event_message.is_err() {
                 break 'running;
             }
-
             let event = event_message.unwrap();
-            virtual_machine.cpu_cycle(event);
-
-            virtual_machine.decode_instruction(&mut renderer_context);
-            renderer_context.draw(&virtual_machine.display_bits);
-
-            thread::sleep(Duration::new(0, 1_000_000_000u32 / 700));
+            virtual_machine.cpu_cycle(event, &mut renderer_context);
+            thread::sleep(Duration::from_millis(2));
         }
         Ok(())
     }

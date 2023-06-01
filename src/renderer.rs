@@ -90,8 +90,8 @@ impl Renderer for SDLWrapper {
             .for_each(|key| {
                 let key_index_o = match key {
                     Keycode::Num1 => Some(0x1),
-                    Keycode::Num2 => Some(0x1),
-                    Keycode::Num3 => Some(0x2),
+                    Keycode::Num2 => Some(0x2),
+                    Keycode::Num3 => Some(0x3),
                     Keycode::Num4 => Some(0xC),
                     Keycode::Q => Some(0x4),
                     Keycode::W => Some(0x5),
