@@ -18,6 +18,7 @@ pub struct VM {
     keys: [bool; 16],
     execution_paused: bool,
     key_register: usize,
+    display_changed: bool,
 }
 
 impl VM {
@@ -41,6 +42,7 @@ impl VM {
             keys: [false; 16],
             execution_paused: false,
             key_register: 0,
+            display_changed: false,
         }
     }
 
@@ -146,7 +148,8 @@ impl VM {
             0x00E0 => {
                 // Probably not the best performance wise
                 self.display_bits = [[0; CHIP8_WIDTH]; CHIP8_HEIGHT];
-                context.clear_screen()
+                context.clear_screen();
+                self.display_changed = true;
             }
 
             0x00EE => {
@@ -210,7 +213,7 @@ impl VM {
                             break;
                         }
                         for bit in 0..8 {
-                            let x = (self.registers[x as usize] + bit) as usize % self.w;
+                            let x = (self.registers[x as usize] as usize + bit as usize) % self.w;
                             if x >= self.w {
                                 break;
                             }
@@ -219,7 +222,7 @@ impl VM {
                             self.display_bits[new_y_coords][x] ^= color;
                         }
                     }
-                    //println!("Draw {} {} {}", x_coordinate, y_coordinate, nibble)
+                    self.display_changed = true;
                 }
                 0x0C => {
                     let random_number = rand::random::<u8>() & nn;
@@ -327,6 +330,10 @@ impl VM {
                         self.execution_paused = true;
                         self.key_register = x as usize;
                     }
+                    (0x0F, _, 0x02, 0x09) => {
+                        let digit = self.registers[x as usize] as u16;
+                        self.i = digit * 5;
+                    }
                     _ => {
                         panic!("Uninplemented instruction {:#06X?}", instruction);
                     }
@@ -370,7 +377,10 @@ impl VM {
                 self.sound_timer - 1
             };
             self.decode_instruction(renderer_context);
-            renderer_context.draw(&self.display_bits);
+            if self.display_changed {
+                renderer_context.draw(&self.display_bits);
+                self.display_changed = false;
+            }
         }
     }
 
